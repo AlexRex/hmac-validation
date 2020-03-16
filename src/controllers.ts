@@ -40,6 +40,8 @@ export const simple: Middleware = async (ctx: Context, next) => {
   return testHash(hash, getSignatureHeader(ctx), ctx);
 };
 
+// This must be a Redis, Memcached or similar.
+// And in order to reduce the size and collision issues a TTL to the elemtns should be added.
 const nonceSet = new Set();
 export const nonce: Middleware = async (ctx: Context) => {
   const { signatureNonce } = parseSignature(getSignatureHeader(ctx));
