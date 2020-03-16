@@ -7,7 +7,11 @@
     "clean": "rm -rf dist/",
     "build": "npm run lint && npm run clean && tsc",
     "lint": "tslint -p tsconfig.json -c tslint.json",
-    "start": "ts-node-dev ./src/index.ts"
+    "start": "ts-node-dev ./src/index.ts",
+    "example:simple": "ts-node ./requests/simple.ts",
+    "example:nonce": "ts-node ./requests/nonce.ts",
+    "example:timestamp": "ts-node ./requests/timestamp.ts",
+    "example:complete": "ts-node ./requests/complete.ts"
   },
   "author": "aletormat@gmail.com",
   "license": "ISC",
@@ -19,6 +23,7 @@
     "@types/koa-logger": "3.1.1",
     "@types/koa-router": "7.4.0",
     "@types/uuid": "7.0.0",
+    "ts-node": "8.6.2",
     "ts-node-dev": "1.0.0-pre.44",
     "tslint": "6.0.0",
     "tslint-eslint-rules": "5.4.0",
