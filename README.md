@@ -1,5 +1,5 @@
 # hmac-validation
-👮‍♂️Verify integrity of API requests using HMAC signatures 
+👮‍♂️Verify integrity of API requests using HMAC signatures following a simplified version of tht [HTTP HMAC Spec](https://github.com/acquia/http-hmac-spec).
 
 The idea of this repo is to have a working example of different verifying levels of HMAC signature using Nodejs. 
 
