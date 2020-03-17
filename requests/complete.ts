@@ -14,15 +14,15 @@ const requestTimestamp = new Date().getTime();
 const nonce = uuid();
 
 const body = {
-  mysecureInfo: 1234,
-  requestTimestamp,
-  nonce
+  mysecureInfo: 1234
 };
 
 const bodyString = JSON.stringify(body);
 
+const toHash = `${bodyString}${nonce}${requestTimestamp}`;
+
 const hmacHash = createHmac('sha256', SECRET_KEY)
-  .update(bodyString)
+  .update(toHash)
   .digest('base64');
 
 const config = {
@@ -49,7 +49,7 @@ http.post('http://localhost:8000/complete', body, config)
         console.log(resp.data);
       })
       .catch((err) => {
-        console.log(err.message);
+        console.log(err.response.data);
       });
 
     wait(10000);
@@ -59,14 +59,12 @@ http.post('http://localhost:8000/complete', body, config)
         console.log(resp.data);
       })
       .catch((err) => {
-        console.log(err.message);
+        console.log(err.response.data);
       });
 
     const newDate = new Date().getTime();
     const newNonce = 'new-nonce';
 
-    body.nonce = newNonce;
-    body.requestTimestamp = newDate;
     config.headers['x-hmac-signature'] = `${hmacHash}:${newNonce}:${newDate}`;
 
     await http.post('http://localhost:8000/complete', body, config)
@@ -74,9 +72,9 @@ http.post('http://localhost:8000/complete', body, config)
         console.log(resp.data);
       })
       .catch((err) => {
-        console.log(err.message);
+        console.log(err.response.data);
       });
   })
   .catch((err) => {
-    console.log(err.message);
+    console.log(err.response.data);
   });

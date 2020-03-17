@@ -35,9 +35,9 @@ http.post('/simple', body, config)
         console.log(resp.data);
       })
       .catch((err) => {
-        console.log(err.message);
+        console.log(err.response.data);
       });
   })
   .catch((err) => {
-    console.log(err.message);
+    console.log(err.response.data);
   });

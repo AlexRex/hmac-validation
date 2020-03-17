@@ -13,14 +13,15 @@ const SECRET_KEY = 'secret-hmac-key-you-know';
 const nonce = uuid();
 
 const body = {
-  mysecureInfo: 1234,
-  nonce // nonce value
+  mysecureInfo: 1234
 };
 
 const bodyString = JSON.stringify(body);
 
+const toHash = `${bodyString}${nonce}`;
+
 const hmacHash = createHmac('sha256', SECRET_KEY)
-  .update(bodyString)
+  .update(toHash)
   .digest('base64');
 
 const config = {
@@ -30,18 +31,29 @@ const config = {
 };
 
 http.post('/nonce', body, config)
-  .then((resp) => {
+  .then(async (resp) => {
     console.log(resp.data);
 
     // Repeat same request again!
-    http.post('/nonce', body, config)
+    await http.post('/nonce', body, config)
       .then((resp) => {
         console.log(resp.data);
       })
       .catch((err) => {
-        console.log(err.message);
+        console.log(err.response.data);
+      });
+
+    config.headers['x-hmac-signature'] = `${hmacHash}:fake-nonce`;
+
+    // Repeat same request again with different nonce
+    await http.post('/nonce', body, config)
+      .then((resp) => {
+        console.log(resp.data);
+      })
+      .catch((err) => {
+        console.log(err.response.data);
       });
   })
   .catch((err) => {
-    console.log(err.message);
+    console.log(err.response.data);
   });

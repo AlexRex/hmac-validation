@@ -36,7 +36,7 @@ npm run example:simple
 
 When introducing a Nonce we disable the replayability of the requests (for a limited time depending on the implementation).
 
-With this one our digest will be formed with `${bodyHash}:{nonce}` and the request of our Body should have the nonce to validate the integrity. 
+With this one our digest will be formed with `${hmac(body+nonce)}:{nonce}`. We create a hmac of the combination body+nonce and include the plain nonce.
 
 This way, when we get the request in the server we can regenerate the same signature using the nonce in the header and the full body. 
 
@@ -54,7 +54,7 @@ it is not possible to the attacker to wait the TTL time and replay the requests 
 
 In order to avoid this we can add another component: a timestamp. 
 
-The same way we did with the nonce we add a timestamp to request body and the digest `${bodyHash}:{nonce}:{timestamp}`. 
+The same way we did with the nonce we add a timestamp to the digest `${hmac(body+nonce+timestamp)}:{nonce}:{timestamp}`. 
 With this timestamp we can allow requests only inside a threshold, in order to avoid time drifts between client and server.
 
 If the request timestamp is ouside of this threshold we can reject it. 

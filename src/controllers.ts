@@ -11,16 +11,17 @@ const okResponse = (ctx: Context) => {
   return ctx;
 };
 
-const badResponse = (ctx: Context) => {
+const badResponse = (ctx: Context, message: string) => {
   ctx.response.status = 403;
+  ctx.response.body = message;
 
   return ctx;
 };
 
-const testHash = (created: string, original: string, ctx: Context) =>
+const testHash = (created: string, original: string, ctx: Context, message: string) =>
   created === original
     ? okResponse(ctx)
-    : badResponse(ctx);
+    : badResponse(ctx, message);
 
 const parseSignature = (rawSignature: string) => {
   const [ signature, nonce, timestamp ] = rawSignature.split(':');
@@ -37,7 +38,7 @@ export const simple: Middleware = async (ctx: Context, next) => {
     .update(stringBody)
     .digest('base64');
 
-  return testHash(hash, getSignatureHeader(ctx), ctx);
+  return testHash(hash, getSignatureHeader(ctx), ctx, 'Failed to compare hmac');
 };
 
 // This must be a Redis, Memcached or similar.
@@ -46,68 +47,72 @@ const nonceSet = new Set();
 export const nonce: Middleware = async (ctx: Context) => {
   const { signatureNonce } = parseSignature(getSignatureHeader(ctx));
 
-  const bodyNonce = ctx.request.body.nonce;
-
-  if (signatureNonce !== bodyNonce || nonceSet.has(signatureNonce)) {
-    return badResponse(ctx);
+  if (nonceSet.has(signatureNonce)) {
+    return badResponse(ctx, 'Nonce already exists');
   }
 
   nonceSet.add(signatureNonce);
 
   const stringBody = JSON.stringify(ctx.request.body);
 
+  const toHash = `${stringBody}${signatureNonce}`;
+
   const hash = createHmac('sha256', SECRET_KEY)
-    .update(stringBody)
+    .update(toHash)
     .digest('base64');
 
-  return testHash(`${hash}:${bodyNonce}`, getSignatureHeader(ctx), ctx);
+  return testHash(`${hash}:${signatureNonce}`, getSignatureHeader(ctx), ctx, 'Failed to compare hmac');
 };
 
 export const timestamp: Middleware = async (ctx: Context) => {
   const { signatureTimestamp, signatureNonce } = parseSignature(getSignatureHeader(ctx));
 
-  const bodyTimestamp = ctx.request.body.requestTimestamp;
+  const timeDifference = Math.abs(new Date().getTime() - signatureTimestamp);
 
-  const timeDifference = Math.abs(new Date().getTime() - bodyTimestamp);
-
-  if (signatureTimestamp !== bodyTimestamp || timeDifference > 10000) { // Bigger than 10 secs for drift ?
-    return badResponse(ctx);
+  if (timeDifference > 10000) { // Bigger than 10 secs for drift ?
+    return badResponse(ctx, `Time difference is ${timeDifference}`);
   }
 
   const stringBody = JSON.stringify(ctx.request.body);
 
+  const toHash = `${stringBody}${signatureTimestamp}`;
+
   const hash = createHmac('sha256', SECRET_KEY)
-    .update(stringBody)
+    .update(toHash)
     .digest('base64');
 
-  return testHash(`${hash}:${signatureNonce}:${bodyTimestamp}`, getSignatureHeader(ctx), ctx);
+  // Using dummy nonce
+  return testHash(
+    `${hash}:${signatureNonce}:${signatureTimestamp}`, getSignatureHeader(ctx), ctx, 'Failed to compare hmac'
+  );
 };
 
 // Complete solution: Simple + Nonce + Timestamp
 export const complete: Middleware = async (ctx: Context) => {
   const { signatureTimestamp, signatureNonce } = parseSignature(getSignatureHeader(ctx));
 
-  const bodyTimestamp = ctx.request.body.requestTimestamp;
-  const bodyNonce = ctx.request.body.nonce;
-
-  const timeDifference = Math.abs(new Date().getTime() - bodyTimestamp);
+  const timeDifference = Math.abs(new Date().getTime() - signatureTimestamp);
 
   // Bigger than 10 secs for drift ?
-  if (signatureTimestamp !== bodyTimestamp || timeDifference > 10000) {
-    return badResponse(ctx);
+  if (timeDifference > 10000) {
+    return badResponse(ctx, `Time difference is ${timeDifference}`);
   }
 
-  if (signatureNonce !== bodyNonce || nonceSet.has(signatureNonce)) {
-    return badResponse(ctx);
+  if (nonceSet.has(signatureNonce)) {
+    return badResponse(ctx, 'Nonce already exists');
   }
 
   nonceSet.add(signatureNonce);
 
   const stringBody = JSON.stringify(ctx.request.body);
 
+  const toHash = `${stringBody}${signatureNonce}${signatureTimestamp}`;
+
   const hash = createHmac('sha256', SECRET_KEY)
-    .update(stringBody)
+    .update(toHash)
     .digest('base64');
 
-  return testHash(`${hash}:${bodyNonce}:${bodyTimestamp}`, getSignatureHeader(ctx), ctx);
+  return testHash(
+    `${hash}:${signatureNonce}:${signatureTimestamp}`, getSignatureHeader(ctx), ctx, 'Failed to compare hmac'
+  );
 };
